@@ -57,3 +57,5 @@ while others are more subtle (e.g. blue -> sky blue).
 Depending on your monitor, you will want to change the monitor settings in 'psychopy'. The default monitor is optimised for a small laptop monitor. 
 Ideally, you want to change the monitor specifications (e.g. screen width) so that the grey centred box is only occupying 50% of vertical pixels. The purpose of this
 is that a smaller box means all stimuli appear in central, not peripheral, vision.
+
+
