@@ -1,0 +1,139 @@
+---
+title: "Instrumental N-back Preprocessing Test"
+date:"21/03/2022"
+output: html_document
+---
+## N-back RMarkdown (February 24, 2022; Version 0.1)
+
+This is an RMarkdown to allow for reproducible and accurate preprocessing of the N-back Psychopy 
+task data created by Michael Colwell (michael.colwell@psych.ox.ac.uk / ORCID 0000-0001-7846-2879).
+
+The task materials and preprocessing script are offered free of charge for researchers. **It is requested that researchers who publish data using these materials (task or preprocessing script) cite the code for the task
+in relevant publications**. Our reference is:
+
+[TO BE COMPLETED]
+
+##Required R packages
+
+You will need the following packages installed and loaded before executing the below code chunks. 
+
+```{r libraries, echo=FALSE, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(gtools)
+library(knitr)
+library(stringr)
+library(purrr)
+library(readxl)
+library(data.table)
+library(openxlsx)
+library(ggpubr)
+library(rstatix)
+library('ez')
+library(ggsignif)
+library(RColorBrewer)
+library(emmeans)
+library(plotrix)
+```
+
+##Begin preprocessing: Setting directory, merging files and deleting unnecessary columns
+
+You will first need to point to the directory of your task files, typically in the 'data' subfolder where the
+psychopy task is located. **Please edit the path directory below after the setwd function.**
+
+The next lines in the chunk of code will allow you to merge all data files (.csv) in the directory assigned above to a dataframe, and then delete extraneous columns from the dataframe.
+
+**Potential error**: "Error in rbind(deparse.level, ...) : numbers of columns of arguments do not match"
+**Solution**: One of the .csv files may not have run beyond the practice section, therefore not enough columns
+have generated. Delete this file and then continue.
+
+```{r b0, echo=FALSE, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list=ls()) # clear the workspace
+
+setwd("E:/Behavioural Tasks/2 Colour Change Detection Task - Oxford PERL/pilot_data")
+
+N_back_files <- list.files(pattern=glob2rx("*Colour*.csv")) #create a list of files containing the word 'Back'.
+
+N_back <- N_back_files %>% map_dfr(read.csv) #stack the files containing the word 'Back' on top of each other.
+
+N_back <- N_back %>% rename(Participant.ID=participant) 
+
+N_back <- N_back %>% dplyr::select(Participant.ID, ï..CondFile, mouse.clicked_name, mouse_2.clicked_name, Corr_Wedge)
+                                   
+#Note that the 'correctness'; column refers to the actual key they should have pressed for the actual trials and that 'correctnessP' refers to the actual key they should have pressed for the practice trials.
+
+
+```
+##Further parsing the dataframe 
+
+The following chunks will allow you to further parse the data, including generating omission/comission error checks
+based on conditions set in the file.
+
+```{r b0, echo=FALSE, include=TRUE}
+
+N_back <- N_back[!is.na(N_back$mouse.clicked_name), ]
+N_back <- N_back[!(N_back$mouse.clicked_name == ""), ]
+
+N_back_first_tidy <-N_back %>%  mutate(block = case_when((ï..CondFile == "Conditions/3_square_trial.xlsx") ~ '3_square', (ï..CondFile == "Conditions/4_square_trial.xlsx") ~ '4_square', (ï..CondFile == 'Conditions/5_square_trial.xlsx') ~ '5_square', (ï..CondFile == 'Conditions/6_square_trial.xlsx') ~ '6_square'))
+
+N_back_first_tidy <- N_back_first_tidy %>% mutate(Loc_corr = case_when((mouse.clicked_name == "Target_2") ~ '1', TRUE ~ '0'))
+         
+N_back_first_tidy <- N_back_first_tidy %>% mutate(Color_corr = case_when((mouse_2.clicked_name == Corr_Wedge) ~ '1', TRUE ~ '0'))
+
+N_back_first_tidy$Loc_corr <- as.numeric(N_back_first_tidy$Loc_corr)
+N_back_first_tidy$Color_corr <- as.numeric(N_back_first_tidy$Color_corr)
+         
+N_back_Summary_Table <- N_back_first_tidy %>%
+ group_by(Participant.ID, block) %>%
+ summarize(Location_correct = sum(Loc_corr, na.rm = TRUE), 
+           Colour_correct = sum(Color_corr, na.rm = TRUE))
+
+N_back_Summary_Table2 <- N_back_first_tidy %>%
+ group_by(block) %>%
+ summarize(Location_correct = sum(Loc_corr, na.rm = TRUE), 
+           Colour_correct = sum(Color_corr, na.rm = TRUE))
+
+#
+N_back_Summary_Table %>%
+  group_by(block) %>%
+  get_summary_stats(Location_correct, type = "mean_sd")
+
+
+N_back_Summary_Table %>%
+  group_by(block) %>%
+  get_summary_stats(Colour_correct, type = "mean_sd")
+
+
+
+
+
+N_back_Summary_Table %>%
+  group_by(Block,Letter_reward) %>%
+  get_summary_stats(left_TRUE_acc, type = "mean_sd")
+
+N_back_Summary_Table %>%
+  group_by(Block,Letter_reward) %>%
+  get_summary_stats(mean_RT, type = "mean_sd")
+
+#
+p<-ggplot(N_back_Summary_Table, aes(x=right_TRUE_acc)) + 
+  geom_histogram(color="black", fill="white")
+p
+
+
+Figure1 <- N_back_Summary_Table %>% 
+  group_by(Block,Letter_reward) %>% ggplot(aes(x=right_TRUE_acc, color=Letter_reward))+
+    geom_histogram(fill="white")+
+      facet_wrap(~fct_rev(Block),nrow=1)
+
+
+
+Figure1 <- N_back_Summary_Table %>% 
+  group_by(Block,Letter_reward) %>% ggplot(aes(x=mean_RT, color=Letter_reward))+
+    geom_histogram(fill="white")+
+      facet_wrap(~fct_rev(Block),nrow=1)
+
+
+```
