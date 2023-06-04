@@ -17,12 +17,6 @@ This release is open for free, academic use/modification. If you use this work i
 
 Colwell, Michael, Murphy, Susannah, & Harmer, Catherine. (2023). Colour Change Detection Task (Oxford, PERL) (Psychopy). Zenodo. https://doi.org/10.5281/zenodo.8003373
 
-Clinical study record: https://clinicaltrials.gov/ct2/show/NCT05849675
-
-Research publication: TBC (PEACE Study - publication TBC)
-
-Testing & Debugging by: PERL Lab Oxford
-
 ## Purpose of the task
 This is an adaption of a classic task of visuo-spatial working memory, also known as a partial report change detection task. This task 
 was created specifically to probe both location in space and colour (in a colour-blind friendly manner). Colours in the task
@@ -34,10 +28,9 @@ http://jfly.iam.u-tokyo.ac.jp/color/
 
 This task is intended to be used in healthy individuals to probe visuo-spatial working memory across a parametric distribution. Thus, it would
 provide an adequete measurement to investigate the cognitive effects of a psychopharmacologically active agent. The task is currently in use
-in the PEACE study in Oxford (An fMRI investigation of the effects of selective histamine-3 receptor antagonism on cognitive and emotional processing in healthy individuals).
+in the PEACE study in Oxford (An fMRI investigation of the effects of selective histamine-3 receptor antagonism on cognitive and emotional processing in healthy individuals - https://clinicaltrials.gov/ct2/show/NCT05849675)
 
 ## Task specifications
-
 The initial stimulus presentation lasts 300ms, followed by a short pseudo-random ISI (0.7-1.1s), then the set will reappear on the screen with
 the colour of one stimulus having changed. Participants then must click on the changed square using the mouse, followed by another pseudo-random 
 ISI (0.7-1.1s). Following the ISI, a colour wheel of eight colours will be presented; using the mouse participants must identify the original colour of the
@@ -52,7 +45,6 @@ in each quadrant of the X,Y axes at any stage. Every stimulus in a set will alwa
 while others are more subtle (e.g. blue -> sky blue). 
 
 ## Instructions
-
 1. Download Psychopy (version v2021.2.3 and above) - https://www.psychopy.org/download.html
 2. Once installed, unzip the contents of this folder to a location on your computer
 3. Open the 'Colour Change Detection Task - Oxford PERL' folder and double click on 'Colour Change Detection Task Oxford PERL'.psyexp
