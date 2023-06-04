@@ -13,7 +13,9 @@ This task and pre-processing scripts are open-source and free for all to use, in
 additional permission from the author (M Colwell). However, we ask that if you publish data using this task that you cite 
 the materials/original publications. Please also consult the author if you plan on making substantial alterations to the task shell.
 
-Materials publication: Colwell, Michael, Murphy, Susannah, & Harmer, Catherine. (2023). Colour Change Detection Task (Oxford, PERL) (Psychopy). Zenodo. https://doi.org/10.5281/zenodo.8003373
+**Please cite the code below**:
+
+Colwell, Michael, Murphy, Susannah, & Harmer, Catherine. (2023). Colour Change Detection Task (Oxford, PERL) (Psychopy). Zenodo. https://doi.org/10.5281/zenodo.8003373
 
 Clinical study record: https://clinicaltrials.gov/ct2/show/NCT05849675
 
