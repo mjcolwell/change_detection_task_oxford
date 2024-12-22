@@ -1,0 +1,316 @@
+---
+title: "Change_Detection_Task_Prepr_and_Analysis"
+author: "Michael Colwell"
+date: "2024-04-09"
+output: html_document
+---
+
+#This is the preprocessing and analysis script designed for the 'Partial Change Detection Task' by Michael Colwell (michaelcolwell92@gmail.com / michael.colwell@psych.ox.ac.uk) which can be accessed here: https://github.com/mjcolwell/change_detection_task_oxford
+
+#The task takes the raw input from psychopy (.csv files) and processes them a report that is easy to analyse. If you use this task and/or
+#this script, please cite the following repository:
+
+#Colwell, Michael, Murphy, Susannah, & Harmer, Catherine. (2023). Colour Change Detection Task (Oxford, PERL) (Psychopy). Zenodo. #https://doi.org/10.5281/zenodo.8003373
+
+#
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Library chunk
+
+```{r cars}
+library(dplyr)
+library(tidyverse)
+library(gtools)
+library(knitr)
+library(data.table)
+library(ggrepel)
+library(ggpubr)
+library(rstatix)
+library("ez")
+library(ggsignif)
+library(RColorBrewer)
+library(emmeans)
+library(plotrix)
+library(lme4)
+library(stringr)
+library(ggplot2)
+library(effectsize)
+library(lmerTest)
+library(cowplot)
+```
+
+## Preprocessing chunk
+
+```{r pressure, echo=FALSE}
+
+#Set working directory, create a list of relevant data files and merge them
+
+setwd("C:/Users/micha/Desktop/PEACE_Behavioural_Data/Change_Detection_Task")
+
+CDT_files <- list.files(pattern = glob2rx("*Change*.csv")) # create a list of files containing the word 'Back'.
+
+CDT_Main <- CDT_files %>% 
+  map_dfr(~ read.csv(.x, stringsAsFactors = FALSE, colClasses = c(key_resp.keys = "character")))
+
+#Clean up Participant.ID column
+
+CDT_Main <- CDT_Main %>% rename(Participant.ID = participant)
+
+CDT_Main$Participant.ID <- toupper(CDT_Main$Participant.ID)
+
+#Remove extraneous columns
+
+CDT_Main <- CDT_Main %>% dplyr::select(Participant.ID, CondFile, Trial, Corr_Wedge, mouse.clicked_name, time_LocalisationBegin, time_LocalisationEnd, mouse_2.clicked_name, time_ColourSelectStart, time_ColourSelectEnd, frameRate) 
+
+#Retrieve trial_type factor from the 'condition' file column (CondFile). Each trial type also doubles as 'block' as there is only one block per each trial type.
+
+CDT_Main <- CDT_Main %>%
+  mutate(Trial_Type = case_when(
+    grepl("3_square", CondFile) ~ "3_Squares",
+    grepl("4_square", CondFile) ~ "4_Squares",
+    grepl("5_square", CondFile) ~ "5_Squares",
+    grepl("6_square", CondFile) ~ "6_Squares",
+    TRUE ~ NA_character_
+  ))
+
+#Remove rows where there is no 'Trial' as these will be instructions and are not relevant to analysis
+
+CDT_Main <- CDT_Main %>% 
+  filter(!is.na(Trial))
+
+#Create 'correctness' column for spatial choices (selecting the correct square which changed).
+
+CDT_Main <- CDT_Main %>%
+  mutate(Spatial.Correct = ifelse(grepl("Target", mouse.clicked_name), 1, 0))
+
+#Create 'correctness' column for colour choices (selecting the correct colour which changed on the colour wheel.)
+
+CDT_Main <- CDT_Main %>%
+  mutate(Colour.Correct = ifelse(mouse_2.clicked_name == Corr_Wedge, 1, 0))
+
+#Create an 'RT' column for spatial selections.
+
+CDT_Main <- CDT_Main %>%
+  mutate(Spatial.RT.local = time_LocalisationEnd - time_LocalisationBegin)
+
+#Create an 'RT' column for colour wheel selections.
+
+CDT_Main <- CDT_Main %>%
+  mutate(Colour.RT.local = time_ColourSelectEnd - time_ColourSelectStart)
+
+#Convert time units in both RT columns to ms
+
+CDT_Main <- CDT_Main %>%
+  mutate(Spatial.RT.local = Spatial.RT.local * 1000)
+
+CDT_Main <- CDT_Main %>%
+  mutate(Colour.RT.local = Colour.RT.local * 1000)
+
+#Remove all extraneous reference columns
+
+CDT_Main <- CDT_Main %>% dplyr::select(Participant.ID, Trial, Trial_Type, Spatial.Correct, Spatial.RT.local, Colour.Correct, Colour.RT.local, frameRate)
+
+```
+
+```{r pressure, echo=FALSE}
+#Create summary file
+
+#Note that all accuracy values are expressed as percentages for ease of interpretation
+
+CDT_Main_Summary <- CDT_Main %>%
+  group_by(Participant.ID, Trial_Type) %>%
+  summarize(Spatial.Accuracy = (sum(Spatial.Correct, na.rm = TRUE)/16)*100, 
+            Colour.Accuracy = (sum(Colour.Correct, na.rm = TRUE)/16)*100,
+            Spatial.RT = mean(Spatial.RT.local, na.rm = TRUE),
+            Colour.RT = mean(Colour.RT.local, na.rm = TRUE))
+
+```
+```{r pressure, echo=FALSE}
+#Quality checks
+
+# Function to detect outliers
+is_outlier <- function(x) {
+  return(x < quantile(x, 0.25) - 3.0 * IQR(x) | x > quantile(x, 0.75) + 3.0 * IQR(x))
+}
+
+#Spatial Accuracy outliers
+
+Spatial_Accuracy_Plot <- ggplot(CDT_Main_Summary, aes(x = as.factor(Trial_Type), y = Spatial.Accuracy)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outlier points in boxplot
+  geom_point(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Spatial.Accuracy), ], aes(color = Participant.ID)) + 
+  geom_text_repel(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Spatial.Accuracy), ], aes(label = Participant.ID), color = "black", size = 3) +  # Label outliers
+  labs(title = "",
+       y = "\nAccuracy for spatial location (%)\n",
+       x = "\nTrial Type\n") +
+  theme_minimal()+
+  theme(text = element_text(size = 16))
+
+#Colour Accuracy outliers
+
+Colour_Accuracy_Plot <- ggplot(CDT_Main_Summary, aes(x = as.factor(Trial_Type), y = Colour.Accuracy)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outlier points in boxplot
+  geom_point(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Colour.Accuracy), ], aes(color = Participant.ID)) + 
+  geom_text_repel(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Colour.Accuracy), ], aes(label = Participant.ID), color = "black", size = 3) +  # Label outliers
+  labs(title = "",
+       y = "\nAccuracy for colour (%)\n",
+       x = "\nTrial Type\n") +
+  theme_minimal()+
+  theme(text = element_text(size = 16))
+
+#Spatial localisation
+
+Spatial_Localisation_Plot <- ggplot(CDT_Main_Summary, aes(x = as.factor(Trial_Type), y = Spatial.RT)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outlier points in boxplot
+  geom_point(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Spatial.RT), ], aes(color = Participant.ID)) +
+  geom_text_repel(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Spatial.RT), ], aes(label = Participant.ID), color = "black", size = 3) +  # Label outliers
+  labs(title = "",
+       y = "\nSpatial Localisation Time (ms)\n",
+       x = "\nTrial Type\n") +
+  theme_minimal()+
+  theme(text = element_text(size = 16))
+
+#Colour localisation
+
+Colour_Localisation_Plot <- ggplot(CDT_Main_Summary, aes(x = as.factor(Trial_Type), y = Colour.RT)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outlier points in boxplot
+  geom_point(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Colour.RT), ], aes(color = Participant.ID)) + 
+  geom_text_repel(data = CDT_Main_Summary[is_outlier(CDT_Main_Summary$Colour.RT), ], aes(label = Participant.ID), color = "black", size = 3) +  # Label outliers
+  labs(title = "",
+       y = "\nColour Localisation Time (ms)\n",
+       x = "\nTrial Type\n") +
+  theme_minimal()+
+  theme(text = element_text(size = 16))
+
+########################################
+
+
+````
+
+```{r pressure, echo=FALSE}
+#Removing excluded data & merging demographics file
+
+#Removal of excluded data:
+
+#No consistent outlier across dataset - no removals
+
+#removal_df <- subset(CDT_Main_Summary, Participant.ID != "P003")
+
+#CDT_Main_Summary <- droplevels(removal_df)
+
+#Adding demographics file
+
+setwd("C:/Users/micha/Desktop/PEACE_Behavioural_Data/Allocation_and_Demographics")
+
+Allocation_and_Demographics <- read.csv("Allocation_And_Demo.csv")
+
+Allocation_and_Demographics$Participant.ID <- as.factor(Allocation_and_Demographics$Participant.ID)
+
+CDT_Full <- merge(CDT_Main_Summary, Allocation_and_Demographics, by = "Participant.ID")
+
+````
+```{r pressure, echo=FALSE}
+#Inferential analyses
+
+#Spatial Accuracy analysis
+
+Spatial_Accuracy_Model <- aov(Spatial.Accuracy ~ Allocation + Trial_Type + + Allocation:Trial_Type + Error(Participant.ID), data = CDT_Full)
+
+summary(Spatial_Accuracy_Model)
+
+# Calculate estimated marginal means (EMMs) for Allocation*Condition interaction
+model_linear <- lmer(Spatial.Accuracy ~ Allocation + Trial_Type + Allocation:Trial_Type + (1 | Participant.ID), data = CDT_Full)
+
+eta_squared(model_linear, ci = 0.95, alternative = "two.sided")
+
+EMM_2 <- emmeans(model_linear, ~ Allocation | Trial_Type)
+
+# Calculate pairwise comparisons for the specified contrasts
+pairwise_comparisons <- pairs(EMM_2, adjust = "holm")
+
+summary(pairwise_comparisons)
+
+effect_size <- eff_size(EMM_2, sigma = sigma(model_linear), edf = df.residual(model_linear))
+
+summary(effect_size)
+
+CDT_Full %>%
+  group_by(Trial_Type, Allocation) %>%
+  get_summary_stats(Spatial.Accuracy, type = "mean_sd")
+
+############################################################
+
+#Colour Accuracy analysis
+
+Spatial_Accuracy_Model <- aov(Colour.Accuracy ~ Allocation + Trial_Type + Allocation:Trial_Type + Error(Participant.ID), data = CDT_Full)
+
+summary(Spatial_Accuracy_Model)
+
+# Calculate estimated marginal means (EMMs) for Allocation*Condition interaction
+model_linear <- lmer(Colour.Accuracy ~ Allocation + Trial_Type + Allocation:Trial_Type + (1 | Participant.ID), data = CDT_Full)
+
+eta_squared(model_linear, ci = 0.95, alternative = "two.sided")
+
+EMM_2 <- emmeans(model_linear, ~ Allocation | Trial_Type)
+
+# Calculate pairwise comparisons for the specified contrasts
+pairwise_comparisons <- pairs(EMM_2, adjust = "holm")
+
+summary(pairwise_comparisons)
+
+effect_size <- eff_size(EMM_2, sigma = sigma(model_linear), edf = df.residual(model_linear))
+
+summary(effect_size)
+
+CDT_Full %>%
+  group_by(Trial_Type, Allocation) %>%
+  get_summary_stats(Colour.Accuracy, type = "mean_sd")
+
+#################################################################
+
+#Spatial Localisation (RT) analysis 
+
+Spatial_RT_Model <- aov(Spatial.RT ~ Allocation + Trial_Type + + Allocation:Trial_Type + Error(Participant.ID), data = CDT_Full)
+
+summary(Spatial_RT_Model)
+
+# Calculate estimated marginal means (EMMs) for Allocation*Condition interaction
+model_linear <- lmer(Spatial.RT ~ Allocation + Trial_Type + Allocation:Trial_Type + (1 | Participant.ID), data = CDT_Full)
+
+eta_squared(model_linear, ci = 0.95, alternative = "two.sided")
+
+#No effect
+
+#Colour localisation (RT) analysis
+
+Colour_RT_model <- aov(Colour.RT ~ Allocation + Trial_Type + + Allocation:Trial_Type + Error(Participant.ID), data = CDT_Full)
+
+summary(Colour_RT_model)
+
+# Calculate estimated marginal means (EMMs) for Allocation*Condition interaction
+model_linear <- lmer(Colour.RT ~ Allocation + Trial_Type + Allocation:Trial_Type + (1 | Participant.ID), data = CDT_Full)
+
+eta_squared(model_linear, ci = 0.95, alternative = "two.sided")
+
+EMM_2 <- emmeans(model_linear, ~ Allocation | Trial_Type)
+
+# Calculate pairwise comparisons for the specified contrasts
+pairwise_comparisons <- pairs(EMM_2, adjust = "holm")
+
+summary(pairwise_comparisons)
+
+effect_size <- eff_size(EMM_2, sigma = sigma(model_linear), edf = df.residual(model_linear))
+
+summary(effect_size)
+
+CDT_Full %>%
+  group_by(Trial_Type, Allocation) %>%
+  get_summary_stats(Colour.RT, type = "mean_sd")
+
+#####
+
+````
+
+
