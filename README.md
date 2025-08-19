@@ -1,12 +1,12 @@
 # Partial Report Change Detection Task (PERL - Oxford)
 
-## Version 1.0 (11/02/2023)
+## Version 1.1 (16/02/2025)
+
+**Change log**: Included task version 2 for PRE/POST designs. Made visual adjustments to improve visual clarity. Fixed minor issues with stimulus coding and duplicates. Upgraded to newer version of Psychopy. 
 
 Task made by Michael Colwell (michael.colwell@psych.ox.ac.uk), with suggestions and improvements by Prof Catherine Harmer (catherine.harmer@psych.ox.ac.uk).
 
-<p align="center">
-<img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZWM0MTI0YjE0MmYwNWNiM2I0YTA1ZmRlMjk5MjlhMGM5NTBkNTg1ZiZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/juXBiZHQOUFpK2tEah/giphy.gif" width="400" height="340" />
-</p>
+![CDT Task Flow Animation](Images/Task_Flow_Animation.gif)
 
 ## License
 This task and pre-processing scripts are open-source and free for all to use, including students and researchers. You do not need 
